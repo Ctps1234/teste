@@ -4,4 +4,4 @@ version=v1.0
 versionCode=100
 author=Ctps1234
 description=Adiciona a stack libperfmgr oficial do Pixel ao HyperOS e AOSP: HAL de energia AIDL com ADPF/hint sessions, sendhint e powerhint.json calibrado para o seu dispositivo.
-updateJson=https://raw.githubusercontent.com/Ctps1234/teste/main/update.json
+updateJson=https://raw.githubusercontent.com/Ctps1234/libperfmgr/main/update.json

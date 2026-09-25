@@ -1,7 +1,7 @@
 # libperfmgr for HyperOS & AOSP
 
-[![Build](https://github.com/Ctps1234/teste/actions/workflows/build.yml/badge.svg)](https://github.com/Ctps1234/teste/actions/workflows/build.yml)
-[![Release](https://img.shields.io/github/v/release/Ctps1234/teste?color=blue)](https://github.com/Ctps1234/teste/releases)
+[![Build](https://github.com/Ctps1234/libperfmgr/actions/workflows/build.yml/badge.svg)](https://github.com/Ctps1234/libperfmgr/actions/workflows/build.yml)
+[![Release](https://img.shields.io/github/v/release/Ctps1234/libperfmgr?color=blue)](https://github.com/Ctps1234/libperfmgr/releases)
 [![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](NOTICE.md)
 
 *Read this in [Português](README.pt-BR.md).*
