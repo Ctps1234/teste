@@ -1,0 +1,48 @@
+# ---------------------------------------------------------------------------
+# libperfmgr-hyperos - regras SELinux
+#
+# O HyperOS nao faz ship de nenhum HAL android.hardware.power, por isso o
+# dominio padrao do AOSP (hal_power_default) pode nao existir na politica da
+# ROM. Criamos aqui o nosso proprio dominio, permissivo, para que o servico
+# consiga registar-se no servicemanager e responder ao framework.
+# ---------------------------------------------------------------------------
+
+# dominio do servico power HAL
+type perfmgr_hal domain
+permissive perfmgr_hal
+
+# tipo para o executavel (etiquetado em runtime pelo post-mount.sh)
+type perfmgr_hal_exec file_type
+typeattribute perfmgr_hal_exec exec_type
+typeattribute perfmgr_hal_exec vendor_file_type
+
+# transicao init -> perfmgr_hal ao executar o binario
+allow init perfmgr_hal process transition
+allow init perfmgr_hal_exec file { getattr open read execute map }
+allow perfmgr_hal perfmgr_hal_exec file { entrypoint getattr open read execute map }
+allow perfmgr_hal init process sigchld
+
+# registo do servico AIDL android.hardware.power.IPower/default
+allow perfmgr_hal hal_power_service service_manager { add find }
+allow perfmgr_hal servicemanager binder { call transfer }
+allow perfmgr_hal hwservicemanager binder { call transfer }
+
+# bibliotecas em /vendor/lib64 e configuracao em /vendor/etc
+allow perfmgr_hal same_process_hal_file file { getattr open read execute map }
+allow perfmgr_hal vendor_configs_file dir { search getattr open read }
+allow perfmgr_hal vendor_configs_file file { getattr open read }
+allow perfmgr_hal vendor_file file { getattr open read execute map }
+
+# sysfs / cgroups usados pelo HintManager e pelo ADPF
+allow perfmgr_hal sysfs file { getattr open read write append }
+allow perfmgr_hal sysfs dir { search getattr open read }
+allow perfmgr_hal cgroup dir { search getattr open read write }
+allow perfmgr_hal cgroup file { getattr open read write append }
+allow perfmgr_hal proc file { getattr open read write append }
+
+# fallback: se a ROM tiver o dominio AOSP, tambem o deixamos permissivo
+permissive hal_power_default
+allow hal_power_default hal_power_service service_manager { add find }
+
+# fallback: caso o binario corra no dominio do init (sem transicao)
+allow init hal_power_service service_manager { add find }
