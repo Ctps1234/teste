@@ -1,0 +1,59 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Versão a publicar (ex.: v1.1)'
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Instalar zip
+        run: sudo apt-get update && sudo apt-get install -y zip
+
+      - name: Definir versão
+        id: ver
+        run: |
+          V="${{ github.event.inputs.version }}"
+          [ -n "$V" ] || V="${GITHUB_REF_NAME}"
+          CODE=$(echo "$V" | tr -dc '0-9')
+          [ -n "$CODE" ] || CODE=1
+          sed -i "s/^version=.*/version=$V/" module/module.prop
+          sed -i "s/^versionCode=.*/versionCode=$CODE/" module/module.prop
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+
+      - name: Construir o módulo
+        run: ./build.sh
+        env:
+          REPO_URL: https://github.com/${{ github.repository }}
+
+      - name: Criar a release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.ver.outputs.version }}
+          files: |
+            out/*.zip
+            update.json
+          generate_release_notes: true
+
+      - name: Publicar update.json na branch principal
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          DEFAULT=$(gh api "repos/${{ github.repository }}" --jq .default_branch)
+          gh api -X PUT "repos/${{ github.repository }}/contents/update.json" \
+            -f message="chore: update.json ${{ steps.ver.outputs.version }}" \
+            -f content="$(base64 -w0 update.json)" \
+            -f branch="$DEFAULT"

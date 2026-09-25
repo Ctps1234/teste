@@ -1,0 +1,109 @@
+name: Build
+
+# Constrói o ZIP flashável em cada push, em cada PR e à mão (workflow_dispatch).
+# O ZIP fica disponível em Actions -> Build -> Artifacts.
+# Quem quiser uma release com update.json usa o workflow 'Release' (tag v*).
+
+on:
+  push:
+    branches:
+      - '**'
+    paths-ignore:
+      - '**.md'
+      - 'update.json'
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Versão a usar no nome do ZIP (ex.: v1.1). Vazio = a do module.prop'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Dependências
+        run: sudo apt-get update && sudo apt-get install -y zip
+
+      - name: Verificar integridade dos binários (SHA256)
+        working-directory: prebuilt
+        run: |
+          command -v sha256sum || { sudo apt-get install -y coreutils; }
+          sha256sum -c --quiet SHA256SUMS
+          echo "OK: todos os binários batem certo com SHA256SUMS"
+
+      - name: Verificar sintaxe dos scripts
+        run: |
+          fail=0
+          for f in module/*.sh module/common/*.sh build.sh tools/*.sh; do
+            [ -f "$f" ] || continue
+            if head -1 "$f" | grep -q bash; then
+              bash -n "$f" || { echo "erro bash: $f"; fail=1; }
+            else
+              if command -v dash >/dev/null; then dash -n "$f" || { echo "erro sh: $f"; fail=1; }
+              else /bin/sh -n "$f" || { echo "erro sh: $f"; fail=1; }; fi
+            fi
+          done
+          [ $fail -eq 0 ] || exit 1
+          echo "OK: sintaxe dos scripts"
+
+      - name: Nome da versão
+        id: ver
+        run: |
+          V="${{ github.event.inputs.version }}"
+          [ -n "$V" ] || V=$(sed -n 's/^version=//p' module/module.prop | head -1)
+          [ -n "$V" ] || V="dev"
+          SHA=$(git rev-parse --short HEAD 2>/dev/null || echo "local")
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          echo "stamp=${V}-${SHA}" >> "$GITHUB_OUTPUT"
+
+      - name: Construir o módulo
+        run: ./build.sh
+        env:
+          REPO_URL: https://github.com/${{ github.repository }}
+
+      - name: Verificar o ZIP gerado
+        run: |
+          set -e
+          ls -lh out/*.zip
+          Z=$(ls out/*.zip | head -1)
+          echo "== conteúdo (amostra) =="; unzip -l "$Z" | head -30
+          for f in module.prop customize.sh service.sh post-mount.sh sepolicy.rule \
+                   initrc/libperfmgr.rc webroot/index.html \
+                   prebuilt/api35/lib64/libperfmgr.so prebuilt/api36/lib64/libperfmgr.so; do
+            unzip -l "$Z" | grep -q " $f$" || { echo "FALTA no zip: $f"; exit 1; }
+          done
+          echo "OK: ficheiros essenciais presentes"
+          sha256sum "$Z" > "$Z.sha256"
+          cat "$Z.sha256"
+
+      - name: Subir o ZIP como artefacto
+        uses: actions/upload-artifact@v4
+        with:
+          name: libperfmgr-hyperos-${{ steps.ver.outputs.stamp }}
+          path: |
+            out/*.zip
+            out/*.zip.sha256
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Resumo
+        run: |
+          {
+            echo "### Build ${{ steps.ver.outputs.stamp }}"
+            echo
+            echo "- ZIP: \`libperfmgr-hyperos-$(sed -n 's/^version=//p' module/module.prop | head -1).zip\`"
+            echo "- Variantes incluídas: api35 (A15/V5) e api36 (A16+/V6)"
+            echo
+            echo "Descarregar em **Actions → Build → Artifacts**."
+          } >> "$GITHUB_STEP_SUMMARY"

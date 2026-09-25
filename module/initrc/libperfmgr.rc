@@ -1,0 +1,12 @@
+# libperfmgr-hyperos — serviço power HAL AIDL (injetado pelo KernelSU initrc)
+#
+# "disabled": o arranque é feito pelo service.sh do módulo, que só corre
+# DEPOIS de o sistema de ficheiros do módulo estar montado (o binário vive
+# em /vendor/bin/hw, sobreposto pelo módulo).
+
+service vendor.power-hal-aidl /vendor/bin/hw/android.hardware.power-service.pixel-libperfmgr
+    class hal
+    user root
+    group system
+    priority -20
+    disabled

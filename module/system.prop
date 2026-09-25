@@ -1,0 +1,9 @@
+# ---------------------------------------------------------------------------
+# libperfmgr-hyperos - propriedades de sistema
+#
+# Propriedades de renderização agressivas como debug.sf.enable_adpf_cpu_hint
+# e debug.hwui.use_hint_manager foram removidas daqui para evitar crash do
+# SurfaceFlinger durante o boot (tela branca / tela preta).
+# ---------------------------------------------------------------------------
+
+vendor.powerhal.config=powerhint.json
